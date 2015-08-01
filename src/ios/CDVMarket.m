@@ -6,6 +6,10 @@
 
 #include "CDVMarket.h"
 
+#import <StoreKit/SKStoreProductViewController.h>
+
+
+
 @implementation CDVMarket
 
 - (void)pluginInitialize
@@ -14,22 +18,36 @@
 
 - (void)open:(CDVInvokedUrlCommand *)command
 {
+    NSArray *args = command.arguments;
+    NSString *appId = [args objectAtIndex:0];
+    appId = [appId substringFromIndex: 2];
+
     [self.commandDelegate runInBackground:^{
-        NSArray *args = command.arguments;
-        NSString *appId = [args objectAtIndex:0];
+
+    UIViewController *topController = [UIApplication sharedApplication].keyWindow.rootViewController;
+
+    while (topController.presentedViewController) {
+        topController = topController.presentedViewController;
+    }
+
         
-        CDVPluginResult *pluginResult;
-        if (appId) {
-            NSString *url = [NSString stringWithFormat:@"itms-apps://itunes.apple.com/app/%@", appId];
-            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
-            
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
-        } else {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Invalid application id: null was found"];
-        }
+    SKStoreProductViewController* spvc = [[SKStoreProductViewController alloc] init];
+        spvc.delegate = self;
+    [spvc loadProductWithParameters:
+            @{SKStoreProductParameterITunesItemIdentifier : appId}
+                    completionBlock:nil];
+    
+    [topController presentViewController:spvc animated:YES completion:nil];
+
+    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:command.callbackId];
         
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     }];
+}
+
+# pragma mark - SKStoreProductViewController delegate
+
+- (void)productViewControllerDidFinish:(SKStoreProductViewController *)viewController {
+    [self.viewController dismissViewControllerAnimated:YES completion:NULL];
 }
 
 @end
